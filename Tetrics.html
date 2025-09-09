@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高编辑度俄罗斯方块</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Helvetica Neue', 'Arial', 'sans-serif';
+            overflow: hidden;
+            background-color: #111827; /* Dark background */
+        }
+        .screen {
+            display: none;
+            width: 100%;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            align-items: center;
+            justify-content: center;
+        }
+        .screen.active {
+            display: flex;
+            opacity: 1;
+        }
+        .glass-panel {
+            background: rgba(31, 41, 55, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.5rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .btn-primary {
+            @apply w-full px-6 py-3 text-lg font-semibold text-white bg-indigo-600 rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-300 transform hover:scale-105;
+        }
+        .btn-primary:disabled {
+            @apply bg-indigo-800 cursor-not-allowed opacity-50;
+        }
+        .btn-secondary {
+            @apply w-full px-6 py-3 text-lg font-semibold text-white bg-gray-600 rounded-lg shadow-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-300 transform hover:scale-105;
+        }
+        #shape-editor-grid .cell {
+            width: 32px;
+            height: 32px;
+            border: 1px solid #4B5563;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #shape-editor-grid .cell.active {
+            background-color: #6D28D9;
+        }
+        .level-card {
+            @apply p-4 border border-gray-600 rounded-lg cursor-pointer transition-all duration-200;
+        }
+        .level-card.unlocked {
+            @apply bg-gray-700 hover:bg-indigo-800 hover:border-indigo-500;
+        }
+        .level-card.locked {
+            @apply bg-gray-800 text-gray-500 cursor-not-allowed;
+        }
+        .shape-preview-canvas {
+            width: 40px;
+            height: 40px;
+            background-color: #1F2937;
+            border-radius: 4px;
+        }
+        .lang-btn {
+            @apply px-3 py-1 text-sm rounded-md transition-colors;
+        }
+        .lang-btn.active {
+            @apply bg-indigo-600 text-white;
+        }
+        .lang-btn:not(.active) {
+            @apply bg-gray-700 text-gray-300 hover:bg-gray-600;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center h-screen">
+
+    <!-- 主菜单 -->
+    <div id="main-menu-screen" class="screen active flex-col space-y-8 p-8">
+        <div id="language-switcher" class="absolute top-6 right-6 flex gap-2">
+            <button id="lang-zh-btn" class="lang-btn">中文</button>
+            <button id="lang-en-btn" class="lang-btn">English</button>
+        </div>
+        <h1 data-lang="title" class="text-6xl font-bold tracking-wider text-center text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-600">俄罗斯方块编辑器</h1>
+        <div class="w-full max-w-sm space-y-4 glass-panel p-8">
+            <p id="loading-indicator" data-lang="loading_levels" class="text-center text-gray-400 hidden">正在加载关卡...</p>
+            <button id="campaign-mode-btn" data-lang="campaign_mode" class="btn-primary">通关模式</button>
+            <button id="free-mode-btn" data-lang="free_mode" class="btn-primary">自由模式</button>
+            <button id="editor-btn" data-lang="editor" class="btn-primary">编辑器</button>
+        </div>
+        <div class="absolute bottom-4 text-gray-500 text-center">
+            <p data-lang="instructions_main"></p>
+            <p data-lang="instructions_pause"></p>
+        </div>
+    </div>
+
+    <!-- 关卡选择 -->
+    <div id="level-select-screen" class="screen">
+        <div class="glass-panel p-8 w-full max-w-4xl text-center">
+            <h2 data-lang="select_level" class="text-4xl font-bold mb-6">选择关卡</h2>
+            <div id="level-grid" class="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 max-h-[60vh] overflow-y-auto pr-2">
+                <!-- 关卡将由JS动态生成 -->
+            </div>
+            <button id="back-to-menu-from-levels" data-lang="back_to_menu" class="btn-secondary mt-8 w-auto">返回主菜单</button>
+        </div>
+    </div>
+
+    <!-- 游戏界面 -->
+    <div id="game-screen" class="screen">
+        <div class="flex items-start gap-8">
+            <div class="flex flex-col items-center">
+                <div class="glass-panel p-6">
+                    <canvas id="game-canvas" width="300" height="600"></canvas>
+                </div>
+                 <div id="storage-mode-display" class="mt-4 text-xs text-gray-400" data-lang="storage_local">存储模式: 本地</div>
+            </div>
+            <div class="w-64 space-y-6">
+                <div class="glass-panel p-6 text-center">
+                    <h3 data-lang="next_piece" class="text-lg font-semibold text-gray-400 mb-2">下一个</h3>
+                    <canvas id="next-canvas" width="120" height="120"></canvas>
+                </div>
+                <div class="glass-panel p-6">
+                    <h3 class="text-2xl font-bold text-center"><span data-lang="level">关卡</span> <span id="level-display">1</span></h3>
+                    <div class="mt-4 text-lg">
+                        <p><span data-lang="countdown">倒计时</span>: <span id="timer-display" class="font-mono">60</span>s</p>
+                        <p><span data-lang="score">分数</span>: <span id="score-display" class="font-mono">0</span></p>
+                    </div>
+                </div>
+                <div id="game-over-panel" class="hidden glass-panel p-6 text-center bg-red-900/50">
+                    <h2 data-lang="game_over" class="text-3xl font-bold text-red-400">游戏结束</h2>
+                    <p id="game-over-reason" class="mt-2"></p>
+                    <button id="restart-btn" data-lang="restart" class="btn-secondary mt-4">重新开始</button>
+                    <button id="back-to-menu-from-game" data-lang="back_to_menu" class="btn-secondary mt-2">返回菜单</button>
+                </div>
+                <div id="level-complete-panel" class="hidden glass-panel p-6 text-center bg-green-900/50">
+                    <h2 data-lang="level_complete" class="text-3xl font-bold text-green-400">关卡完成!</h2>
+                    <button id="next-level-btn" data-lang="next_level" class="btn-primary mt-4">下一关</button>
+                    <button id="back-to-menu-from-win" data-lang="back_to_menu" class="btn-secondary mt-2">返回菜单</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 暂停菜单 -->
+    <div id="pause-menu" class="screen bg-black/50">
+        <div class="glass-panel p-10 text-center w-full max-w-md space-y-6">
+            <h2 data-lang="paused" class="text-4xl font-bold">已暂停</h2>
+            <button id="resume-btn" data-lang="resume_game" class="btn-primary">继续游戏</button>
+            <button id="quit-to-menu-btn" data-lang="quit_to_menu" class="btn-secondary">退出到主菜单</button>
+        </div>
+    </div>
+
+    <!-- 编辑器界面 -->
+    <div id="editor-screen" class="screen">
+        <div class="glass-panel p-8 w-full max-w-6xl h-[90vh] flex gap-8">
+            <!-- 左侧：方块形状编辑器和列表 -->
+            <div class="w-1/3 flex flex-col">
+                <h2 data-lang="shape_editor" class="text-3xl font-bold mb-4">方块编辑器</h2>
+                <div class="flex gap-4">
+                    <div class="flex-grow">
+                        <div id="shape-editor-grid" class="grid grid-cols-5 gap-0 mb-4 bg-gray-800 p-1 rounded-lg">
+                            <!-- 5x5 grid cells generated by JS -->
+                        </div>
+                        <input type="text" id="shape-name" data-lang-placeholder="shape_name_placeholder" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div class="flex flex-col space-y-2">
+                         <button id="save-shape-btn" data-lang="save_shape" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg">保存形状</button>
+                         <button id="clear-shape-btn" data-lang="clear" class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded-lg">清空</button>
+                    </div>
+                </div>
+                <h3 data-lang="custom_shapes_list" class="text-xl font-bold mt-4 mb-2">自定义形状列表</h3>
+                <div id="custom-shapes-list" class="flex-grow overflow-y-auto bg-gray-800/50 p-2 rounded-lg">
+                    <!-- Custom shapes list populated by JS -->
+                </div>
+            </div>
+            
+            <!-- 右侧：关卡编辑器和列表 -->
+            <div class="w-2/3 flex flex-col">
+                <h2 data-lang="level_editor" class="text-3xl font-bold mb-4">关卡编辑器</h2>
+                <div class="flex gap-6">
+                    <div class="w-1/2 space-y-3">
+                        <input type="text" id="level-name" data-lang-placeholder="level_name_placeholder" class="w-full p-2 rounded bg-gray-700 border border-gray-600">
+                        <div class="grid grid-cols-2 gap-4">
+                            <input type="number" id="countdown" data-lang-placeholder="countdown_placeholder" class="p-2 rounded bg-gray-700 border border-gray-600">
+                            <input type="number" id="initial-speed" data-lang-placeholder="initial_speed_placeholder" class="p-2 rounded bg-gray-700 border border-gray-600">
+                            <input type="number" id="lock-speed" data-lang-placeholder="lock_speed_placeholder" class="p-2 rounded bg-gray-700 border border-gray-600">
+                            <select id="texture-select" class="p-2 rounded bg-gray-700 border border-gray-600">
+                                <option value="standard" data-lang="texture_standard">标准</option>
+                                <option value="wood" data-lang="texture_wood">木质</option>
+                                <option value="jewel" data-lang="texture_jewel">宝石</option>
+                                <option value="crystal" data-lang="texture_crystal">水晶</option>
+                            </select>
+                        </div>
+                        <div class="flex gap-2">
+                             <button id="save-level-btn" data-lang="save_level" class="w-full btn-primary py-2 text-base">保存关卡</button>
+                             <button id="new-level-btn" data-lang="create_new_level" class="w-full btn-secondary py-2 text-base">创建新关卡</button>
+                        </div>
+                    </div>
+                    <div class="w-1/2 flex flex-col">
+                         <h3 class="text-lg font-bold mb-2"><span data-lang="available_blocks">可用方块</span> <span data-lang="available_blocks_note" class="text-sm font-normal text-gray-400">(不选则为全部)</span></h3>
+                         <div id="level-shape-selection" class="flex-grow overflow-y-auto bg-gray-800/50 p-2 rounded-lg border border-gray-600">
+                            <!-- Checkboxes and shape previews will be populated here -->
+                         </div>
+                    </div>
+                </div>
+                 <h3 data-lang="levels_list" class="text-xl font-bold mt-4 mb-2">关卡列表</h3>
+                <div id="levels-list-editor" class="flex-grow overflow-y-auto bg-gray-800/50 p-2 rounded-lg">
+                    <!-- All levels list populated by JS -->
+                </div>
+            </div>
+             <button id="back-to-menu-from-editor" data-lang="back_to_menu" class="absolute top-6 right-6 btn-secondary !w-auto">返回菜单</button>
+        </div>
+    </div>
+
+
+    <script type="module">
+        // --- Translation Data ---
+        const translations = {
+            en: {
+                title: "Tetris Editor",
+                loading_levels: "Loading levels...",
+                campaign_mode: "Campaign Mode",
+                free_mode: "Free Mode",
+                editor: "Editor",
+                instructions_main: "Use W/↑ to Rotate, A/D/←/→ to Move, S/↓ to Speed Up, Space to Hard Drop",
+                instructions_pause: "Press ESC during game to pause",
+                select_level: "Select Level",
+                back_to_menu: "Back to Menu",
+                next_piece: "Next",
+                level: "Level",
+                countdown: "Time",
+                score: "Score",
+                game_over: "Game Over",
+                restart: "Restart",
+                level_complete: "Level Complete!",
+                next_level: "Next Level",
+                paused: "Paused",
+                resume_game: "Resume Game",
+                quit_to_menu: "Quit to Menu",
+                shape_editor: "Shape Editor",
+                save_shape: "Save Shape",
+                clear: "Clear",
+                custom_shapes_list: "Custom Shapes",
+                shape_name_placeholder: "Shape Name",
+                level_editor: "Level Editor",
+                level_name_placeholder: "Level Name (e.g., 21)",
+                countdown_placeholder: "Countdown (s)",
+                initial_speed_placeholder: "Initial Speed (ms/row)",
+                lock_speed_placeholder: "Lock Speed (ms/row)",
+                texture_standard: "Standard",
+                texture_wood: "Wood",
+                texture_jewel: "Jewel",
+                texture_crystal: "Crystal",
+                save_level: "Save Level",
+                create_new_level: "New Level",
+                available_blocks: "Available Blocks",
+                available_blocks_note: "(select none for all)",
+                levels_list: "Levels List",
+                default_levels: "Default Levels",
+                custom_levels: "Custom Levels",
+                edit: "Edit",
+                delete: "Delete",
+                update_level: "Update Level",
+                save_as_new_level: "Save as New Level",
+                save_new_level: "Save New Level",
+                confirm_delete_shape: "Are you sure you want to delete shape {itemName}?",
+                confirm_delete_level: "Are you sure you want to delete level {itemName}?",
+                alert_no_shape_name: "Please enter a shape name.",
+                alert_name_exists: "This name is already in use. Please choose another one.",
+                alert_empty_shape: "The shape cannot be empty.",
+                alert_shape_save_fail: "Failed to save shape!",
+                alert_no_level_name: "Please enter a level name.",
+                alert_invalid_numbers: "Please enter valid numbers for level settings.",
+                alert_level_save_fail: "Failed to save level!",
+                game_over_full: "Board is full",
+                game_over_no_shapes: "No available shapes for this level!",
+                all_levels_cleared: "Congratulations! You have cleared all levels!",
+                level_prefix: "Level",
+                level_copy_suffix: "(Copy)",
+                storage_local: "Storage: Local"
+            },
+            zh: {
+                title: "俄罗斯方块编辑器",
+                loading_levels: "正在加载关卡...",
+                campaign_mode: "通关模式",
+                free_mode: "自由模式",
+                editor: "编辑器",
+                instructions_main: "使用 W/上箭头 旋转, A/D/左右箭头 移动, S/下箭头 加速, 空格键 瞬间下落",
+                instructions_pause: "游戏中按 ESC 暂停",
+                select_level: "选择关卡",
+                back_to_menu: "返回菜单",
+                next_piece: "下一个",
+                level: "关卡",
+                countdown: "倒计时",
+                score: "分数",
+                game_over: "游戏结束",
+                restart: "重新开始",
+                level_complete: "关卡完成!",
+                next_level: "下一关",
+                paused: "已暂停",
+                resume_game: "继续游戏",
+                quit_to_menu: "退出到主菜单",
+                shape_editor: "方块编辑器",
+                save_shape: "保存形状",
+                clear: "清空",
+                custom_shapes_list: "自定义形状列表",
+                shape_name_placeholder: "方块形状名称",
+                level_editor: "关卡编辑器",
+                level_name_placeholder: "关卡名称 (例如: 21)",
+                countdown_placeholder: "倒计时 (秒)",
+                initial_speed_placeholder: "初始速度 (ms/行)",
+                lock_speed_placeholder: "锁定速度 (ms/行)",
+                texture_standard: "标准",
+                texture_wood: "木质",
+                texture_jewel: "宝石",
+                texture_crystal: "水晶",
+                save_level: "保存关卡",
+                create_new_level: "创建新关卡",
+                available_blocks: "可用方块",
+                available_blocks_note: "(不选则为全部)",
+                levels_list: "关卡列表",
+                default_levels: "默认关卡",
+                custom_levels: "自定义关卡",
+                edit: "编辑",
+                delete: "删除",
+                update_level: "更新关卡",
+                save_as_new_level: "另存为新关卡",
+                save_new_level: "保存新关卡",
+                confirm_delete_shape: "确定要删除形状 {itemName} 吗?",
+                confirm_delete_level: "确定要删除关卡 {itemName} 吗?",
+                alert_no_shape_name: "请输入形状名称。",
+                alert_name_exists: "该名称已被使用，请换一个。",
+                alert_empty_shape: "形状不能为空。",
+                alert_shape_save_fail: "保存形状失败！",
+                alert_no_level_name: "请输入关卡名称。",
+                alert_invalid_numbers: "请输入有效的数字。",
+                alert_level_save_fail: "保存关卡失败！",
+                game_over_full: "方块已堆满",
+                game_over_no_shapes: "关卡方块配置错误!",
+                all_levels_cleared: "恭喜你！已通关所有关卡！",
+                level_prefix: "关卡",
+                level_copy_suffix: "(副本)",
+                storage_local: "存储模式: 本地"
+            }
+        };
+
+        // Game constants
+        const COLS = 10;
+        const ROWS = 20;
+        const BLOCK_SIZE = 30;
+        const NEXT_COLS = 4;
+        const NEXT_ROWS = 4;
+        
+        // DOM Elements
+        const gameCanvas = document.getElementById('game-canvas');
+        const nextCanvas = document.getElementById('next-canvas');
+        const gameCtx = gameCanvas.getContext('2d');
+        const nextCtx = nextCanvas.getContext('2d');
+
+        // Game state
+        let gameState = {
+            board: [],
+            currentPiece: null,
+            nextPiece: null,
+            score: 0,
+            timer: 60,
+            isGameOver: false,
+            isPaused: false,
+            currentLevelIndex: 0,
+            unlockedLevel: 1,
+            gameMode: 'campaign', // 'campaign' or 'free'
+            allLevels: [],
+            customShapes: [],
+            timerInterval: null,
+            gameLoopId: null,
+            dropCounter: 0,
+            dropInterval: 1000,
+            lockInterval: 500,
+            editingLevelId: null,
+            language: 'zh'
+        };
+
+        // Default Data
+        const DEFAULT_SHAPES = [
+            { id: 'default-I', name: 'I', matrix: [[0,0,0,0], [1,1,1,1], [0,0,0,0], [0,0,0,0]], color: '#34D399' },
+            { id: 'default-L', name: 'L', matrix: [[0,2,0], [0,2,0], [0,2,2]], color: '#F59E0B' },
+            { id: 'default-J', name: 'J', matrix: [[0,3,0], [0,3,0], [3,3,0]], color: '#60A5FA' },
+            { id: 'default-O', name: 'O', matrix: [[4,4], [4,4]], color: '#FBBF24' },
+            { id: 'default-S', name: 'S', matrix: [[0,5,5], [5,5,0], [0,0,0]], color: '#EF4444' },
+            { id: 'default-T', name: 'T', matrix: [[0,0,0], [6,6,6], [0,6,0]], color: '#A78BFA' },
+            { id: 'default-Z', name: 'Z', matrix: [[7,7,0], [0,7,7], [0,0,0]], color: '#84CC16' }
+        ];
+
+        const DEFAULT_LEVELS = Array.from({length: 20}, (_, i) => ({
+            id: `default_${i + 1}`,
+            name: `关卡 ${i + 1}`,
+            countdown: 60 + Math.floor(i / 5) * 10,
+            initialSpeed: 1000 * Math.pow(0.9, Math.floor(i/5)),
+            lockSpeed: 500 * Math.pow(0.9, Math.floor(i/5)),
+            texture: 'standard',
+            allowedShapes: [],
+            isCustom: false,
+        }));
+
+        const TEXTURES = {
+            standard: (ctx, x, y, size, color) => {
+                ctx.fillStyle = color;
+                ctx.fillRect(x, y, size, size);
+                ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+                ctx.strokeRect(x, y, size, size);
+            },
+            wood: (ctx, x, y, size, color) => {
+                ctx.fillStyle = color;
+                ctx.fillRect(x, y, size, size);
+                ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(x + size * 0.2, y);
+                ctx.lineTo(x + size * 0.2, y + size);
+                ctx.moveTo(x + size * 0.7, y);
+                ctx.lineTo(x + size * 0.7, y + size);
+                ctx.stroke();
+                ctx.lineWidth = 1;
+            },
+            jewel: (ctx, x, y, size, color) => {
+                ctx.fillStyle = color;
+                ctx.fillRect(x, y, size, size);
+                ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                ctx.fillRect(x + size * 0.1, y + size * 0.1, size * 0.8, size * 0.8);
+                ctx.fillStyle = color;
+                ctx.fillRect(x + size * 0.2, y + size * 0.2, size * 0.6, size * 0.6);
+            },
+            crystal: (ctx, x, y, size, color) => {
+                ctx.globalAlpha = 0.7;
+                ctx.fillStyle = color;
+                ctx.fillRect(x, y, size, size);
+                ctx.globalAlpha = 1.0;
+                ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+                ctx.strokeRect(x + 2, y + 2, size - 4, size - 4);
+            }
+        };
+        
+        // --- Language & UI Text ---
+        function setLanguage(lang) {
+            gameState.language = lang;
+            localStorage.setItem('tetris_lang', lang);
+            document.documentElement.lang = lang;
+            document.getElementById('lang-zh-btn').classList.toggle('active', lang === 'zh');
+            document.getElementById('lang-en-btn').classList.toggle('active', lang === 'en');
+            updateUIText();
+        }
+
+        function updateUIText() {
+            const t = translations[gameState.language];
+            document.querySelectorAll('[data-lang]').forEach(el => {
+                const key = el.dataset.lang;
+                if (t[key]) el.textContent = t[key];
+            });
+            document.querySelectorAll('[data-lang-placeholder]').forEach(el => {
+                const key = el.dataset.langPlaceholder;
+                if (t[key]) el.placeholder = t[key];
+            });
+            // Update lists that are dynamically generated
+            renderCustomShapesList();
+            renderLevelsListInEditor();
+            updateLevelSelection();
+            resetLevelEditorForm(); 
+        }
+
+        // --- UI Navigation ---
+        const screens = document.querySelectorAll('.screen');
+        function showScreen(screenId) {
+            screens.forEach(s => {
+                s.classList.remove('active');
+            });
+            const activeScreen = document.getElementById(screenId);
+            if (activeScreen) {
+                activeScreen.classList.add('active');
+            }
+        }
+
+        // --- Game Logic ---
+        function createBoard() {
+            return Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+        }
+
+        function createPiece(shapeData) {
+            const matrix = shapeData.matrix;
+            return {
+                matrix: matrix,
+                pos: { x: Math.floor(COLS / 2) - Math.floor(matrix[0].length / 2), y: 0 },
+                color: shapeData.color,
+                texture: gameState.allLevels[gameState.currentLevelIndex]?.texture || 'standard'
+            };
+        }
+        
+        function getRandomPiece() {
+            const level = gameState.allLevels[gameState.currentLevelIndex];
+            let availableShapes = [...DEFAULT_SHAPES, ...gameState.customShapes];
+
+            if (level && level.allowedShapes && level.allowedShapes.length > 0) {
+                let filteredShapes = availableShapes.filter(shape => level.allowedShapes.includes(shape.name));
+                if (filteredShapes.length > 0) {
+                    availableShapes = filteredShapes;
+                }
+            }
+            
+            if (availableShapes.length === 0) return null;
+
+            const shapeData = availableShapes[Math.floor(Math.random() * availableShapes.length)];
+            const newShape = JSON.parse(JSON.stringify(shapeData));
+            if (!newShape.color) {
+                newShape.color = `hsl(${Math.random() * 360}, 70%, 50%)`;
+            }
+            return createPiece(newShape);
+        }
+
+        function drawMatrix(matrix, offset, ctx, texture = 'standard') {
+            matrix.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value !== 0) {
+                        const drawFunc = TEXTURES[texture] || TEXTURES['standard'];
+                        const color = gameState.currentPiece.color || '#fff';
+                        drawFunc(ctx, (x + offset.x) * BLOCK_SIZE, (y + offset.y) * BLOCK_SIZE, BLOCK_SIZE, color);
+                    }
+                });
+            });
+        }
+        
+        function drawBoard() {
+            gameState.board.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value !== 0) {
+                        const levelTexture = gameState.allLevels[gameState.currentLevelIndex]?.texture || 'standard';
+                        const drawFunc = TEXTURES[levelTexture] || TEXTURES['standard'];
+                        const color = value; // assuming color is stored in the board
+                        drawFunc(gameCtx, x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, color);
+                    }
+                });
+            });
+        }
+
+        function draw() {
+            gameCtx.fillStyle = '#111827';
+            gameCtx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
+            drawBoard();
+            if (gameState.currentPiece) {
+                drawMatrix(gameState.currentPiece.matrix, gameState.currentPiece.pos, gameCtx, gameState.currentPiece.texture);
+            }
+            
+            // Draw next piece
+            nextCtx.fillStyle = '#111827';
+            nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
+            if(gameState.nextPiece) {
+                const piece = gameState.nextPiece;
+                const offsetX = (NEXT_COLS - piece.matrix[0].length) / 2;
+                const offsetY = (NEXT_ROWS - piece.matrix.length) / 2;
+                drawMatrix(piece.matrix, {x: offsetX, y: offsetY}, nextCtx, piece.texture)
+            }
+        }
+        
+        function merge(board, piece) {
+            piece.matrix.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value !== 0) {
+                        board[y + piece.pos.y][x + piece.pos.x] = piece.color;
+                    }
+                });
+            });
+        }
+
+        function collide(board, piece) {
+            for (let y = 0; y < piece.matrix.length; ++y) {
+                for (let x = 0; x < piece.matrix[y].length; ++x) {
+                    if (piece.matrix[y][x] !== 0 &&
+                       (board[y + piece.pos.y] &&
+                        board[y + piece.pos.y][x + piece.pos.x]) !== 0) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function pieceDrop() {
+            if (gameState.isPaused || gameState.isGameOver || !gameState.currentPiece) return;
+            gameState.currentPiece.pos.y++;
+            if (collide(gameState.board, gameState.currentPiece)) {
+                gameState.currentPiece.pos.y--;
+                merge(gameState.board, gameState.currentPiece);
+                sweepRows();
+                resetPiece();
+            }
+            gameState.dropCounter = 0;
+        }
+
+        function resetPiece() {
+            gameState.currentPiece = gameState.nextPiece;
+            gameState.nextPiece = getRandomPiece();
+            if(!gameState.nextPiece) {
+                gameOver("game_over_no_shapes");
+                return;
+            }
+            if(collide(gameState.board, gameState.currentPiece)) {
+                gameOver("game_over_full");
+            }
+        }
+
+        function sweepRows() {
+            let scoreMultiplier = 1;
+            outer: for (let y = gameState.board.length - 1; y > 0; --y) {
+                for (let x = 0; x < gameState.board[y].length; ++x) {
+                    if (gameState.board[y][x] === 0) {
+                        continue outer;
+                    }
+                }
+                const row = gameState.board.splice(y, 1)[0].fill(0);
+                gameState.board.unshift(row);
+                ++y;
+
+                gameState.score += 10 * scoreMultiplier;
+                scoreMultiplier *= 2;
+            }
+            document.getElementById('score-display').innerText = gameState.score;
+        }
+        
+        function pieceRotate(dir) {
+            const originalMatrix = gameState.currentPiece.matrix;
+            const rows = originalMatrix.length;
+            const cols = originalMatrix[0].length;
+            const rotated = Array.from({ length: cols }, () => Array(rows).fill(0));
+
+            for (let y = 0; y < rows; ++y) {
+                for (let x = 0; x < cols; ++x) {
+                    if (dir > 0) { // Clockwise
+                        rotated[x][rows - 1 - y] = originalMatrix[y][x];
+                    } else { // Counter-clockwise
+                        rotated[cols - 1 - x][y] = originalMatrix[y][x];
+                    }
+                }
+            }
+            
+            const originalPos_x = gameState.currentPiece.pos.x;
+            gameState.currentPiece.matrix = rotated;
+            let offset = 1;
+            while (collide(gameState.board, gameState.currentPiece)) {
+                gameState.currentPiece.pos.x += offset;
+                offset = -(offset + (offset > 0 ? 1 : -1));
+                if (Math.abs(offset) > rotated[0].length) { 
+                    gameState.currentPiece.matrix = originalMatrix;
+                    gameState.currentPiece.pos.x = originalPos_x;
+                    return;
+                }
+            }
+        }
+
+        function pieceMove(dir) {
+            if (!gameState.currentPiece) return;
+            gameState.currentPiece.pos.x += dir;
+            if (collide(gameState.board, gameState.currentPiece)) {
+                gameState.currentPiece.pos.x -= dir;
+            }
+        }
+        
+        function hardDrop() {
+            if (!gameState.currentPiece) return;
+            while (!collide(gameState.board, gameState.currentPiece)) {
+                gameState.currentPiece.pos.y++;
+            }
+            gameState.currentPiece.pos.y--;
+            merge(gameState.board, gameState.currentPiece);
+            sweepRows();
+            resetPiece();
+            gameState.dropCounter = 0;
+        }
+
+        let lastTime = 0;
+        function gameLoop(time = 0) {
+            if (gameState.isPaused || gameState.isGameOver) {
+                 gameState.gameLoopId = requestAnimationFrame(gameLoop);
+                 return;
+            }
+
+            const deltaTime = time - lastTime;
+            lastTime = time;
+            
+            gameState.dropCounter += deltaTime;
+            if (gameState.dropCounter > gameState.dropInterval) {
+                pieceDrop();
+            }
+
+            draw();
+            gameState.gameLoopId = requestAnimationFrame(gameLoop);
+        }
+
+        function startTimer() {
+            document.getElementById('timer-display').innerText = gameState.timer;
+            gameState.timerInterval = setInterval(() => {
+                if (!gameState.isPaused && !gameState.isGameOver) {
+                    gameState.timer--;
+                    document.getElementById('timer-display').innerText = gameState.timer;
+                    if (gameState.timer <= 0) {
+                        levelComplete();
+                    }
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(gameState.timerInterval);
+            gameState.timerInterval = null;
+        }
+
+        function levelComplete() {
+            stopGame();
+            document.getElementById('level-complete-panel').classList.remove('hidden');
+            if (gameState.gameMode === 'campaign' && gameState.currentLevelIndex + 2 > gameState.unlockedLevel) {
+                 gameState.unlockedLevel = gameState.currentLevelIndex + 2;
+                 localStorage.setItem('tetris_unlockedLevel', gameState.unlockedLevel);
+            }
+        }
+
+        function gameOver(reasonKey) {
+            gameState.isGameOver = true;
+            stopTimer();
+            document.getElementById('game-over-panel').classList.remove('hidden');
+            document.getElementById('game-over-reason').innerText = translations[gameState.language][reasonKey];
+        }
+
+        function stopGame() {
+            if (gameState.gameLoopId) {
+                cancelAnimationFrame(gameState.gameLoopId);
+                gameState.gameLoopId = null;
+            }
+            stopTimer();
+        }
+
+        function startGame(levelIndex) {
+            gameState.currentLevelIndex = levelIndex;
+            const level = gameState.allLevels[levelIndex];
+            if (!level) {
+                console.error("Attempted to start an invalid level index:", levelIndex);
+                return;
+            }
+
+            showScreen('game-screen');
+            document.getElementById('game-over-panel').classList.add('hidden');
+            document.getElementById('level-complete-panel').classList.add('hidden');
+            
+            gameState.board = createBoard();
+            gameState.score = 0;
+            gameState.isGameOver = false;
+            gameState.isPaused = false;
+            
+            gameState.timer = level.countdown;
+            gameState.dropInterval = level.initialSpeed;
+            gameState.lockInterval = level.lockSpeed;
+
+            gameState.nextPiece = getRandomPiece();
+            if (!gameState.nextPiece) {
+                gameOver("game_over_no_shapes");
+                return;
+            }
+            resetPiece();
+
+            document.getElementById('score-display').innerText = gameState.score;
+            document.getElementById('level-display').innerText = levelIndex + 1;
+            
+            stopGame();
+            startTimer();
+            gameLoop();
+        }
+
+        // --- Keyboard Controls ---
+        document.addEventListener('keydown', event => {
+            if (document.getElementById('game-screen').classList.contains('active')) {
+                if (event.key === 'Escape') {
+                    togglePause();
+                }
+
+                if (gameState.isPaused || gameState.isGameOver || !gameState.currentPiece) return;
+
+                if (['a', 'A', 'ArrowLeft'].includes(event.key)) {
+                    pieceMove(-1);
+                } else if (['d', 'D', 'ArrowRight'].includes(event.key)) {
+                    pieceMove(1);
+                } else if (['s', 'S', 'ArrowDown'].includes(event.key)) {
+                    pieceDrop();
+                } else if (['w', 'W', 'ArrowUp'].includes(event.key)) {
+                    pieceRotate(1);
+                } else if (event.key === ' ') {
+                    event.preventDefault();
+                    hardDrop();
+                }
+            }
+        });
+        
+        function togglePause() {
+            gameState.isPaused = !gameState.isPaused;
+            const pauseMenu = document.getElementById('pause-menu');
+            if (gameState.isPaused) {
+                pauseMenu.classList.add('active');
+                stopTimer();
+            } else {
+                pauseMenu.classList.remove('active');
+                startTimer();
+            }
+        }
+        
+        // --- Editor & Local Storage Logic ---
+        const editorGrid = document.getElementById('shape-editor-grid');
+        let editorShapeMatrix = Array(5).fill(0).map(() => Array(5).fill(0));
+
+        function setupEditor() {
+            editorGrid.innerHTML = '';
+            for (let r = 0; r < 5; r++) {
+                for (let c = 0; c < 5; c++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    cell.dataset.r = r;
+                    cell.dataset.c = c;
+                    cell.addEventListener('click', () => {
+                        editorShapeMatrix[r][c] = editorShapeMatrix[r][c] === 0 ? 1 : 0;
+                        cell.classList.toggle('active');
+                    });
+                    editorGrid.appendChild(cell);
+                }
+            }
+        }
+
+        function clearEditorShape() {
+            editorShapeMatrix = Array(5).fill(0).map(() => Array(5).fill(0));
+            document.querySelectorAll('#shape-editor-grid .cell').forEach(c => c.classList.remove('active'));
+            document.getElementById('shape-name').value = '';
+        }
+
+        function resetLevelEditorForm() {
+            const t = translations[gameState.language];
+            const saveBtn = document.getElementById('save-level-btn');
+            const levelPrefix = t.level_prefix || 'Level';
+            document.getElementById('level-name').value = `${levelPrefix} ${gameState.allLevels.length + 1}`;
+            document.getElementById('countdown').value = 60;
+            document.getElementById('initial-speed').value = 1000;
+            document.getElementById('lock-speed').value = 500;
+            document.getElementById('texture-select').value = 'standard';
+            document.querySelectorAll('#level-shape-selection input[type="checkbox"]').forEach(cb => cb.checked = false);
+            gameState.editingLevelId = null;
+            saveBtn.textContent = t.save_new_level;
+        }
+
+        function saveShape() {
+            const t = translations[gameState.language];
+            const name = document.getElementById('shape-name').value.trim();
+            if (!name) { alert(t.alert_no_shape_name); return; }
+            if ([...DEFAULT_SHAPES, ...gameState.customShapes].some(s => s.name === name)) {
+                alert(t.alert_name_exists);
+                return;
+            }
+            
+            let minR = 4, maxR = 0, minC = 4, maxC = 0;
+            let hasBlock = false;
+            for(let r=0; r<5; r++) {
+                for(let c=0; c<5; c++) {
+                    if (editorShapeMatrix[r][c] === 1) {
+                        hasBlock = true;
+                        if (r < minR) minR = r;
+                        if (r > maxR) maxR = r;
+                        if (c < minC) minC = c;
+                        if (c > maxC) maxC = c;
+                    }
+                }
+            }
+            if(!hasBlock) { alert(t.alert_empty_shape); return; }
+
+            const trimmedMatrix = editorShapeMatrix.slice(minR, maxR + 1).map(row => row.slice(minC, maxC + 1));
+            
+            const shapeData = {
+                id: crypto.randomUUID(),
+                name: name,
+                matrix: trimmedMatrix,
+            };
+
+            gameState.customShapes.push(shapeData);
+            localStorage.setItem('tetris_customShapes', JSON.stringify(gameState.customShapes));
+            clearEditorShape();
+            renderCustomShapesList();
+            populateShapeSelectionList();
+        }
+
+        function saveLevel() {
+            const t = translations[gameState.language];
+            const allowedShapes = [];
+            document.querySelectorAll('#level-shape-selection input[type="checkbox"]:checked').forEach(checkbox => {
+                allowedShapes.push(checkbox.value);
+            });
+
+            const levelData = {
+                name: document.getElementById('level-name').value.trim(),
+                countdown: parseInt(document.getElementById('countdown').value) || 60,
+                initialSpeed: parseInt(document.getElementById('initial-speed').value) || 1000,
+                lockSpeed: parseInt(document.getElementById('lock-speed').value) || 500,
+                texture: document.getElementById('texture-select').value,
+                allowedShapes: allowedShapes,
+                isCustom: true,
+            };
+            
+            if(!levelData.name) { alert(t.alert_no_level_name); return; }
+            if (isNaN(levelData.countdown) || isNaN(levelData.initialSpeed) || isNaN(levelData.lockSpeed)) {
+                alert(t.alert_invalid_numbers); return;
+            }
+            
+            const customLevels = gameState.allLevels.filter(l => l.isCustom);
+            if (gameState.editingLevelId) {
+                const index = customLevels.findIndex(l => l.id === gameState.editingLevelId);
+                if (index !== -1) {
+                    customLevels[index] = { ...customLevels[index], ...levelData };
+                }
+            } else {
+                levelData.id = crypto.randomUUID();
+                customLevels.push(levelData);
+            }
+            
+            gameState.allLevels = [...DEFAULT_LEVELS, ...customLevels];
+            localStorage.setItem('tetris_customLevels', JSON.stringify(customLevels));
+            resetLevelEditorForm();
+            renderLevelsListInEditor();
+            updateLevelSelection();
+        }
+        
+        function startEditLevel(level) {
+            const t = translations[gameState.language];
+            const saveBtn = document.getElementById('save-level-btn');
+            
+            document.getElementById('level-name').value = level.name;
+            document.getElementById('countdown').value = level.countdown;
+            document.getElementById('initial-speed').value = level.initialSpeed;
+            document.getElementById('lock-speed').value = level.lockSpeed;
+            document.getElementById('texture-select').value = level.texture;
+            
+            const allowed = level.allowedShapes || [];
+            document.querySelectorAll('#level-shape-selection input[type="checkbox"]').forEach(cb => {
+                cb.checked = allowed.includes(cb.value);
+            });
+
+            if (level.isCustom) {
+                gameState.editingLevelId = level.id;
+                saveBtn.textContent = t.update_level;
+            } else {
+                gameState.editingLevelId = null;
+                document.getElementById('level-name').value = `${level.name} ${t.level_copy_suffix}`;
+                saveBtn.textContent = t.save_as_new_level;
+            }
+        }
+
+        function deleteCustomShape(shapeId) {
+            const t = translations[gameState.language];
+            const shapeName = gameState.customShapes.find(s => s.id === shapeId)?.name || '';
+            const confirmation = window.confirm(t.confirm_delete_shape.replace('{itemName}', shapeName));
+            if (confirmation) {
+                gameState.customShapes = gameState.customShapes.filter(s => s.id !== shapeId);
+                localStorage.setItem('tetris_customShapes', JSON.stringify(gameState.customShapes));
+                renderCustomShapesList();
+                populateShapeSelectionList();
+            }
+        }
+
+        function deleteCustomLevel(levelId) {
+            const t = translations[gameState.language];
+            const levelName = gameState.allLevels.find(l => l.id === levelId)?.name || '';
+            const confirmation = window.confirm(t.confirm_delete_level.replace('{itemName}', levelName));
+            if (confirmation) {
+                const customLevels = gameState.allLevels.filter(l => l.isCustom && l.id !== levelId);
+                gameState.allLevels = [...DEFAULT_LEVELS, ...customLevels];
+                localStorage.setItem('tetris_customLevels', JSON.stringify(customLevels));
+                renderLevelsListInEditor();
+                updateLevelSelection();
+            }
+        }
+        
+        function drawShapePreview(canvas, matrix, color = '#A78BFA') {
+            const ctx = canvas.getContext('2d');
+            const blockSize = 8;
+            const previewSize = 40;
+            ctx.clearRect(0, 0, previewSize, previewSize);
+
+            if (!matrix || !matrix.length || !matrix[0].length) return;
+
+            const matrixHeight = matrix.length;
+            const matrixWidth = matrix[0].length;
+            const offsetX = (previewSize - matrixWidth * blockSize) / 2;
+            const offsetY = (previewSize - matrixHeight * blockSize) / 2;
+
+            ctx.fillStyle = color;
+            matrix.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value !== 0) {
+                        ctx.fillRect(offsetX + x * blockSize, offsetY + y * blockSize, blockSize -1, blockSize -1);
+                    }
+                });
+            });
+        }
+
+        function renderCustomShapesList() {
+            const t = translations[gameState.language];
+            const listElement = document.getElementById('custom-shapes-list');
+            listElement.innerHTML = '';
+            gameState.customShapes.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'flex justify-between items-center p-2 bg-gray-700 rounded mb-1';
+                
+                const canvas = document.createElement('canvas');
+                canvas.className = 'shape-preview-canvas';
+                canvas.width = 40; canvas.height = 40;
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = item.name;
+                div.appendChild(canvas);
+                div.appendChild(nameSpan);
+                requestAnimationFrame(() => drawShapePreview(canvas, item.matrix, item.color));
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = t.delete;
+                deleteBtn.className = 'text-red-400 hover:text-red-600 text-sm ml-auto pl-4';
+                deleteBtn.onclick = () => deleteCustomShape(item.id);
+                div.appendChild(deleteBtn);
+                listElement.appendChild(div);
+            });
+        }
+        
+        function renderLevelsListInEditor() {
+            const t = translations[gameState.language];
+            const listElement = document.getElementById('levels-list-editor');
+            listElement.innerHTML = '';
+
+            const defaultLevels = gameState.allLevels.filter(l => !l.isCustom);
+            const customLevels = gameState.allLevels.filter(l => l.isCustom);
+            
+            if (defaultLevels.length > 0) {
+                const header = document.createElement('h4');
+                header.className = 'text-gray-400 text-sm font-bold my-2';
+                header.textContent = t.default_levels;
+                listElement.appendChild(header);
+                defaultLevels.forEach(level => listElement.appendChild(createLevelListItem(level)));
+            }
+
+            if (customLevels.length > 0) {
+                const header = document.createElement('h4');
+                header.className = 'text-gray-400 text-sm font-bold my-2';
+                header.textContent = t.custom_levels;
+                listElement.appendChild(header);
+                customLevels.forEach(level => listElement.appendChild(createLevelListItem(level)));
+            }
+        }
+
+        function createLevelListItem(level) {
+            const t = translations[gameState.language];
+            const div = document.createElement('div');
+            div.className = 'flex justify-between items-center p-2 bg-gray-700 rounded mb-1';
+            
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = (gameState.language === 'en' && !level.isCustom) ? `${t.level_prefix} ${level.name.match(/\d+/)}` : level.name;
+            div.appendChild(nameSpan);
+
+            const buttonsWrapper = document.createElement('div');
+            
+            const editBtn = document.createElement('button');
+            editBtn.textContent = t.edit;
+            editBtn.className = 'text-blue-400 hover:text-blue-600 text-sm px-2';
+            editBtn.onclick = () => startEditLevel(level);
+            buttonsWrapper.appendChild(editBtn);
+
+            if (level.isCustom) {
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = t.delete;
+                deleteBtn.className = 'text-red-400 hover:text-red-600 text-sm px-2';
+                deleteBtn.onclick = () => deleteCustomLevel(level.id);
+                buttonsWrapper.appendChild(deleteBtn);
+            }
+            div.appendChild(buttonsWrapper);
+            return div;
+        }
+
+         function populateShapeSelectionList() {
+            const container = document.getElementById('level-shape-selection');
+            container.innerHTML = '';
+            const allShapes = [...DEFAULT_SHAPES, ...gameState.customShapes];
+
+            allShapes.forEach(shape => {
+                const label = document.createElement('label');
+                label.className = 'flex items-center space-x-2 p-1 hover:bg-gray-700 rounded cursor-pointer';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = shape.name;
+                checkbox.className = 'form-checkbox h-5 w-5 bg-gray-900 border-gray-600 text-indigo-600 focus:ring-indigo-500';
+
+                const canvas = document.createElement('canvas');
+                canvas.className = 'shape-preview-canvas';
+                canvas.width = 40; canvas.height = 40;
+
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = shape.name;
+                
+                label.appendChild(checkbox);
+                label.appendChild(canvas);
+                label.appendChild(nameSpan);
+                container.appendChild(label);
+
+                requestAnimationFrame(() => drawShapePreview(canvas, shape.matrix, shape.color));
+            });
+        }
+        
+        function updateLevelSelection() {
+            const t = translations[gameState.language];
+            const grid = document.getElementById('level-grid');
+            grid.innerHTML = '';
+            gameState.allLevels.forEach((level, index) => {
+                const card = document.createElement('div');
+                card.classList.add('level-card');
+                
+                const isFreeMode = gameState.gameMode === 'free';
+                const isUnlockedInCampaign = index < gameState.unlockedLevel;
+                const isUnlocked = isFreeMode || isUnlockedInCampaign;
+                
+                const levelName = (gameState.language === 'en' && !level.isCustom) ? `${t.level_prefix} ${level.name.match(/\d+/)}` : level.name;
+
+                card.classList.add(isUnlocked ? 'unlocked' : 'locked');
+                card.innerHTML = `<span class="font-bold text-xl">${index + 1}</span><p class="text-xs">${levelName}</p>`;
+                if (isUnlocked) {
+                    card.onclick = () => startGame(index);
+                }
+                grid.appendChild(card);
+            });
+        }
+        
+        function loadDataFromLocalStorage() {
+            try {
+                const customShapes = JSON.parse(localStorage.getItem('tetris_customShapes')) || [];
+                gameState.customShapes = customShapes;
+
+                const customLevels = JSON.parse(localStorage.getItem('tetris_customLevels')) || [];
+                gameState.allLevels = [...DEFAULT_LEVELS, ...customLevels];
+
+                gameState.unlockedLevel = parseInt(localStorage.getItem('tetris_unlockedLevel')) || 1;
+            } catch(e) {
+                console.error("Failed to load data from localStorage", e);
+                gameState.allLevels = [...DEFAULT_LEVELS];
+            }
+        }
+
+        // --- Init and Event Listeners ---
+        function init() {
+            loadDataFromLocalStorage();
+            
+            // Language buttons
+            document.getElementById('lang-zh-btn').addEventListener('click', () => setLanguage('zh'));
+            document.getElementById('lang-en-btn').addEventListener('click', () => setLanguage('en'));
+            const savedLang = localStorage.getItem('tetris_lang') || 'zh';
+            setLanguage(savedLang);
+
+            // Main Menu buttons
+            document.getElementById('campaign-mode-btn').addEventListener('click', () => {
+                gameState.gameMode = 'campaign';
+                startGame(gameState.unlockedLevel - 1);
+            });
+            document.getElementById('free-mode-btn').addEventListener('click', () => {
+                gameState.gameMode = 'free';
+                updateLevelSelection();
+                showScreen('level-select-screen');
+            });
+            document.getElementById('editor-btn').addEventListener('click', () => {
+                resetLevelEditorForm();
+                showScreen('editor-screen');
+            });
+            
+            // Back buttons
+            document.getElementById('back-to-menu-from-levels').addEventListener('click', () => showScreen('main-menu-screen'));
+            document.getElementById('back-to-menu-from-editor').addEventListener('click', () => showScreen('main-menu-screen'));
+            
+            // Pause menu buttons
+            document.getElementById('resume-btn').addEventListener('click', togglePause);
+            document.getElementById('quit-to-menu-btn').addEventListener('click', () => {
+                stopGame();
+                togglePause(); // To hide the menu
+                showScreen('main-menu-screen');
+            });
+            
+            // Game Over / Win buttons
+            const restartBtn = document.getElementById('restart-btn');
+            const backToMenuFromGame = document.getElementById('back-to-menu-from-game');
+            const nextLevelBtn = document.getElementById('next-level-btn');
+            const backToMenuFromWin = document.getElementById('back-to-menu-from-win');
+            
+            restartBtn.addEventListener('click', () => startGame(gameState.currentLevelIndex));
+            backToMenuFromGame.addEventListener('click', () => showScreen('main-menu-screen'));
+            nextLevelBtn.addEventListener('click', () => {
+                const nextIndex = gameState.currentLevelIndex + 1;
+                if(nextIndex < gameState.allLevels.length) {
+                    startGame(nextIndex);
+                } else {
+                    alert(translations[gameState.language].all_levels_cleared);
+                    showScreen('main-menu-screen');
+                }
+            });
+            backToMenuFromWin.addEventListener('click', () => showScreen('main-menu-screen'));
+
+            // Editor buttons
+            document.getElementById('save-shape-btn').addEventListener('click', saveShape);
+            document.getElementById('clear-shape-btn').addEventListener('click', clearEditorShape);
+            document.getElementById('save-level-btn').addEventListener('click', saveLevel);
+            document.getElementById('new-level-btn').addEventListener('click', resetLevelEditorForm);
+            
+            setupEditor();
+            populateShapeSelectionList();
+        }
+
+        window.onload = init;
+
+    </script>
+</body>
+</html>
+
