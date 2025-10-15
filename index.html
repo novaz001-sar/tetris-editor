@@ -10,7 +10,7 @@
         body {
             font-family: 'Inter', 'Helvetica Neue', 'Arial', 'sans-serif';
             overflow: hidden;
-            background-color: #111827; /* Dark background */
+            background-color: #F3F4F6; /* Light background */
         }
         .screen {
             display: none;
@@ -29,17 +29,17 @@
             opacity: 1;
         }
         .glass-panel {
-            background: rgba(31, 41, 55, 0.7);
+            background: rgba(255, 255, 255, 0.7);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(0, 0, 0, 0.1);
             border-radius: 1.5rem;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
         }
         .btn-primary {
             @apply w-full px-6 py-3 text-lg font-semibold text-white bg-indigo-600 rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-300 transform hover:scale-105;
         }
         .btn-primary:disabled {
-            @apply bg-indigo-800 cursor-not-allowed opacity-50;
+            @apply bg-indigo-400 cursor-not-allowed opacity-70;
         }
         .btn-secondary {
             @apply w-full px-6 py-3 text-lg font-semibold text-white bg-gray-600 rounded-lg shadow-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-300 transform hover:scale-105;
@@ -47,7 +47,7 @@
         #shape-editor-grid .cell {
             width: 32px;
             height: 32px;
-            border: 1px solid #4B5563;
+            border: 1px solid #D1D5DB;
             cursor: pointer;
             transition: background-color 0.2s;
         }
@@ -55,18 +55,18 @@
             background-color: #6D28D9;
         }
         .level-card {
-            @apply p-4 border border-gray-600 rounded-lg cursor-pointer transition-all duration-200;
+            @apply p-4 border border-gray-200 rounded-lg cursor-pointer transition-all duration-200;
         }
         .level-card.unlocked {
-            @apply bg-gray-700 hover:bg-indigo-800 hover:border-indigo-500;
+            @apply bg-white hover:bg-indigo-50 hover:border-indigo-500;
         }
         .level-card.locked {
-            @apply bg-gray-800 text-gray-500 cursor-not-allowed;
+            @apply bg-gray-200 text-gray-400 cursor-not-allowed;
         }
         .shape-preview-canvas {
             width: 40px;
             height: 40px;
-            background-color: #1F2937;
+            background-color: #E5E7EB;
             border-radius: 4px;
         }
         .lang-btn {
@@ -76,11 +76,11 @@
             @apply bg-indigo-600 text-white;
         }
         .lang-btn:not(.active) {
-            @apply bg-gray-700 text-gray-300 hover:bg-gray-600;
+            @apply bg-gray-200 text-gray-700 hover:bg-gray-300;
         }
     </style>
 </head>
-<body class="bg-gray-900 text-white flex items-center justify-center h-screen">
+<body class="bg-gray-100 text-gray-900 flex items-center justify-center h-screen">
 
     <!-- 主菜单 -->
     <div id="main-menu-screen" class="screen active flex-col space-y-8 p-8">
@@ -88,9 +88,9 @@
             <button id="lang-zh-btn" class="lang-btn">中文</button>
             <button id="lang-en-btn" class="lang-btn">English</button>
         </div>
-        <h1 data-lang="title" class="text-6xl font-bold tracking-wider text-center text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-600">俄罗斯方块编辑器</h1>
+        <h1 data-lang="title" class="text-6xl font-bold tracking-wider text-center text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-indigo-600">俄罗斯方块编辑器</h1>
         <div class="w-full max-w-sm space-y-4 glass-panel p-8">
-            <p id="loading-indicator" data-lang="loading_levels" class="text-center text-gray-400 hidden">正在加载关卡...</p>
+            <p id="loading-indicator" data-lang="loading_levels" class="text-center text-gray-500 hidden">正在加载关卡...</p>
             <button id="campaign-mode-btn" data-lang="campaign_mode" class="btn-primary">通关模式</button>
             <button id="free-mode-btn" data-lang="free_mode" class="btn-primary">自由模式</button>
             <button id="editor-btn" data-lang="editor" class="btn-primary">编辑器</button>
@@ -116,14 +116,14 @@
     <div id="game-screen" class="screen">
         <div class="flex items-start gap-8">
             <div class="flex flex-col items-center">
-                <div class="glass-panel p-6">
+                <div class="glass-panel p-6 border-4 border-yellow-500 shadow-[inset_0_0_0_4px_#FBBF24]">
                     <canvas id="game-canvas" width="300" height="600"></canvas>
                 </div>
-                 <div id="storage-mode-display" class="mt-4 text-xs text-gray-400" data-lang="storage_local">存储模式: 本地</div>
+                 <div id="storage-mode-display" class="mt-4 text-xs text-gray-500" data-lang="storage_local">存储模式: 本地</div>
             </div>
             <div class="w-64 space-y-6">
                 <div class="glass-panel p-6 text-center">
-                    <h3 data-lang="next_piece" class="text-lg font-semibold text-gray-400 mb-2">下一个</h3>
+                    <h3 data-lang="next_piece" class="text-lg font-semibold text-gray-500 mb-2">下一个</h3>
                     <canvas id="next-canvas" width="120" height="120"></canvas>
                 </div>
                 <div class="glass-panel p-6">
@@ -133,14 +133,14 @@
                         <p><span data-lang="score">分数</span>: <span id="score-display" class="font-mono">0</span></p>
                     </div>
                 </div>
-                <div id="game-over-panel" class="hidden glass-panel p-6 text-center bg-red-900/50">
-                    <h2 data-lang="game_over" class="text-3xl font-bold text-red-400">游戏结束</h2>
+                <div id="game-over-panel" class="hidden glass-panel p-6 text-center bg-red-100">
+                    <h2 data-lang="game_over" class="text-3xl font-bold text-red-700">游戏结束</h2>
                     <p id="game-over-reason" class="mt-2"></p>
                     <button id="restart-btn" data-lang="restart" class="btn-secondary mt-4">重新开始</button>
                     <button id="back-to-menu-from-game" data-lang="back_to_menu" class="btn-secondary mt-2">返回菜单</button>
                 </div>
-                <div id="level-complete-panel" class="hidden glass-panel p-6 text-center bg-green-900/50">
-                    <h2 data-lang="level_complete" class="text-3xl font-bold text-green-400">关卡完成!</h2>
+                <div id="level-complete-panel" class="hidden glass-panel p-6 text-center bg-green-100">
+                    <h2 data-lang="level_complete" class="text-3xl font-bold text-green-700">关卡完成!</h2>
                     <button id="next-level-btn" data-lang="next_level" class="btn-primary mt-4">下一关</button>
                     <button id="back-to-menu-from-win" data-lang="back_to_menu" class="btn-secondary mt-2">返回菜单</button>
                 </div>
@@ -149,7 +149,7 @@
     </div>
     
     <!-- 暂停菜单 -->
-    <div id="pause-menu" class="screen bg-black/50">
+    <div id="pause-menu" class="screen bg-gray-900/30">
         <div class="glass-panel p-10 text-center w-full max-w-md space-y-6">
             <h2 data-lang="paused" class="text-4xl font-bold">已暂停</h2>
             <button id="resume-btn" data-lang="resume_game" class="btn-primary">继续游戏</button>
@@ -165,18 +165,18 @@
                 <h2 data-lang="shape_editor" class="text-3xl font-bold mb-4">方块编辑器</h2>
                 <div class="flex gap-4">
                     <div class="flex-grow">
-                        <div id="shape-editor-grid" class="grid grid-cols-5 gap-0 mb-4 bg-gray-800 p-1 rounded-lg">
+                        <div id="shape-editor-grid" class="grid grid-cols-5 gap-0 mb-4 bg-gray-200 p-1 rounded-lg">
                             <!-- 5x5 grid cells generated by JS -->
                         </div>
-                        <input type="text" id="shape-name" data-lang-placeholder="shape_name_placeholder" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <input type="text" id="shape-name" data-lang-placeholder="shape_name_placeholder" class="w-full p-2 rounded bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     </div>
                     <div class="flex flex-col space-y-2">
-                         <button id="save-shape-btn" data-lang="save_shape" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg">保存形状</button>
-                         <button id="clear-shape-btn" data-lang="clear" class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded-lg">清空</button>
+                         <button id="save-shape-btn" data-lang="save_shape" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-white">保存形状</button>
+                         <button id="clear-shape-btn" data-lang="clear" class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 rounded-lg text-white">清空</button>
                     </div>
                 </div>
                 <h3 data-lang="custom_shapes_list" class="text-xl font-bold mt-4 mb-2">自定义形状列表</h3>
-                <div id="custom-shapes-list" class="flex-grow overflow-y-auto bg-gray-800/50 p-2 rounded-lg">
+                <div id="custom-shapes-list" class="flex-grow overflow-y-auto bg-gray-100 p-2 rounded-lg">
                     <!-- Custom shapes list populated by JS -->
                 </div>
             </div>
@@ -186,12 +186,12 @@
                 <h2 data-lang="level_editor" class="text-3xl font-bold mb-4">关卡编辑器</h2>
                 <div class="flex gap-6">
                     <div class="w-1/2 space-y-3">
-                        <input type="text" id="level-name" data-lang-placeholder="level_name_placeholder" class="w-full p-2 rounded bg-gray-700 border border-gray-600">
+                        <input type="text" id="level-name" data-lang-placeholder="level_name_placeholder" class="w-full p-2 rounded bg-white border border-gray-300">
                         <div class="grid grid-cols-2 gap-4">
-                            <input type="number" id="countdown" data-lang-placeholder="countdown_placeholder" class="p-2 rounded bg-gray-700 border border-gray-600">
-                            <input type="number" id="initial-speed" data-lang-placeholder="initial_speed_placeholder" class="p-2 rounded bg-gray-700 border border-gray-600">
-                            <input type="number" id="lock-speed" data-lang-placeholder="lock_speed_placeholder" class="p-2 rounded bg-gray-700 border border-gray-600">
-                            <select id="texture-select" class="p-2 rounded bg-gray-700 border border-gray-600">
+                            <input type="number" id="countdown" data-lang-placeholder="countdown_placeholder" class="p-2 rounded bg-white border border-gray-300">
+                            <input type="number" id="initial-speed" data-lang-placeholder="initial_speed_placeholder" class="p-2 rounded bg-white border border-gray-300">
+                            <input type="number" id="lock-speed" data-lang-placeholder="lock_speed_placeholder" class="p-2 rounded bg-white border border-gray-300">
+                            <select id="texture-select" class="p-2 rounded bg-white border border-gray-300">
                                 <option value="standard" data-lang="texture_standard">标准</option>
                                 <option value="wood" data-lang="texture_wood">木质</option>
                                 <option value="jewel" data-lang="texture_jewel">宝石</option>
@@ -205,13 +205,13 @@
                     </div>
                     <div class="w-1/2 flex flex-col">
                          <h3 class="text-lg font-bold mb-2"><span data-lang="available_blocks">可用方块</span> <span data-lang="available_blocks_note" class="text-sm font-normal text-gray-400">(不选则为全部)</span></h3>
-                         <div id="level-shape-selection" class="flex-grow overflow-y-auto bg-gray-800/50 p-2 rounded-lg border border-gray-600">
+                         <div id="level-shape-selection" class="flex-grow overflow-y-auto bg-gray-100 p-2 rounded-lg border border-gray-300">
                             <!-- Checkboxes and shape previews will be populated here -->
                          </div>
                     </div>
                 </div>
                  <h3 data-lang="levels_list" class="text-xl font-bold mt-4 mb-2">关卡列表</h3>
-                <div id="levels-list-editor" class="flex-grow overflow-y-auto bg-gray-800/50 p-2 rounded-lg">
+                <div id="levels-list-editor" class="flex-grow overflow-y-auto bg-gray-100 p-2 rounded-lg">
                     <!-- All levels list populated by JS -->
                 </div>
             </div>
@@ -419,6 +419,7 @@
             wood: (ctx, x, y, size, color) => {
                 ctx.fillStyle = color;
                 ctx.fillRect(x, y, size, size);
+                // wood grain
                 ctx.strokeStyle = 'rgba(0,0,0,0.4)';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
@@ -442,6 +443,7 @@
                 ctx.fillStyle = color;
                 ctx.fillRect(x, y, size, size);
                 ctx.globalAlpha = 1.0;
+                // crystal effect
                 ctx.strokeStyle = 'rgba(255,255,255,0.8)';
                 ctx.strokeRect(x + 2, y + 2, size - 4, size - 4);
             }
@@ -548,15 +550,29 @@
         }
 
         function draw() {
-            gameCtx.fillStyle = '#111827';
+            gameCtx.fillStyle = '#FFFFFF';
             gameCtx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
             drawBoard();
             if (gameState.currentPiece) {
                 drawMatrix(gameState.currentPiece.matrix, gameState.currentPiece.pos, gameCtx, gameState.currentPiece.texture);
             }
+
+            // 绘制游戏区域的金色边框（墙和地板）
+            const borderWidth = 4; // 边框宽度
+            gameCtx.strokeStyle = '#D97706'; // 金色
+            gameCtx.lineWidth = borderWidth;
+            gameCtx.beginPath();
+            // 左墙
+            gameCtx.moveTo(borderWidth / 2, 0);
+            gameCtx.lineTo(borderWidth / 2, gameCanvas.height - borderWidth / 2);
+            // 地板
+            gameCtx.lineTo(gameCanvas.width - borderWidth / 2, gameCanvas.height - borderWidth / 2);
+            // 右墙
+            gameCtx.lineTo(gameCanvas.width - borderWidth / 2, 0);
+            gameCtx.stroke();
             
             // Draw next piece
-            nextCtx.fillStyle = '#111827';
+            nextCtx.fillStyle = '#FFFFFF';
             nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
             if(gameState.nextPiece) {
                 const piece = gameState.nextPiece;
@@ -1013,7 +1029,7 @@
             listElement.innerHTML = '';
             gameState.customShapes.forEach(item => {
                 const div = document.createElement('div');
-                div.className = 'flex justify-between items-center p-2 bg-gray-700 rounded mb-1';
+                div.className = 'flex justify-between items-center p-2 bg-gray-200 rounded mb-1';
                 
                 const canvas = document.createElement('canvas');
                 canvas.className = 'shape-preview-canvas';
@@ -1026,7 +1042,7 @@
 
                 const deleteBtn = document.createElement('button');
                 deleteBtn.textContent = t.delete;
-                deleteBtn.className = 'text-red-400 hover:text-red-600 text-sm ml-auto pl-4';
+                deleteBtn.className = 'text-red-500 hover:text-red-700 text-sm ml-auto pl-4';
                 deleteBtn.onclick = () => deleteCustomShape(item.id);
                 div.appendChild(deleteBtn);
                 listElement.appendChild(div);
@@ -1061,7 +1077,7 @@
         function createLevelListItem(level) {
             const t = translations[gameState.language];
             const div = document.createElement('div');
-            div.className = 'flex justify-between items-center p-2 bg-gray-700 rounded mb-1';
+            div.className = 'flex justify-between items-center p-2 bg-white rounded mb-1 shadow-sm';
             
             const nameSpan = document.createElement('span');
             nameSpan.textContent = (gameState.language === 'en' && !level.isCustom) ? `${t.level_prefix} ${level.name.match(/\d+/)}` : level.name;
@@ -1071,14 +1087,14 @@
             
             const editBtn = document.createElement('button');
             editBtn.textContent = t.edit;
-            editBtn.className = 'text-blue-400 hover:text-blue-600 text-sm px-2';
+            editBtn.className = 'text-blue-500 hover:text-blue-700 text-sm px-2';
             editBtn.onclick = () => startEditLevel(level);
             buttonsWrapper.appendChild(editBtn);
 
             if (level.isCustom) {
                 const deleteBtn = document.createElement('button');
                 deleteBtn.textContent = t.delete;
-                deleteBtn.className = 'text-red-400 hover:text-red-600 text-sm px-2';
+                deleteBtn.className = 'text-red-500 hover:text-red-700 text-sm px-2';
                 deleteBtn.onclick = () => deleteCustomLevel(level.id);
                 buttonsWrapper.appendChild(deleteBtn);
             }
@@ -1093,12 +1109,12 @@
 
             allShapes.forEach(shape => {
                 const label = document.createElement('label');
-                label.className = 'flex items-center space-x-2 p-1 hover:bg-gray-700 rounded cursor-pointer';
+                label.className = 'flex items-center space-x-2 p-1 hover:bg-gray-200 rounded cursor-pointer';
                 
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
                 checkbox.value = shape.name;
-                checkbox.className = 'form-checkbox h-5 w-5 bg-gray-900 border-gray-600 text-indigo-600 focus:ring-indigo-500';
+                checkbox.className = 'form-checkbox h-5 w-5 bg-gray-50 border-gray-300 text-indigo-600 focus:ring-indigo-500';
 
                 const canvas = document.createElement('canvas');
                 canvas.className = 'shape-preview-canvas';
@@ -1225,4 +1241,8 @@
     </script>
 </body>
 </html>
+
+
+
+
 
